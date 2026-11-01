@@ -20,6 +20,9 @@ local DEFAULTS = {
 	-- Vista previa automática al quedarse quieto (CursorHold) sobre una
 	-- anotación con nota.
 	auto_hover = true,
+	-- Milisegundos de quietud antes de mostrar la vista previa. Usa su propio
+	-- temporizador: NO depende de updatetime (que afecta a todo nvim).
+	hover_delay_ms = 600,
 }
 
 M.options = DEFAULTS
@@ -308,21 +311,56 @@ function M.open()
 	open_big_window(ann.note, false)
 end
 
--- Vista previa automática (CursorHold).
-local function on_hover()
+-- Vista previa automática: temporizador PROPIO, independiente de updatetime
+-- (que es global y afecta swapfiles, gitsigns, etc.). El timer se reprograma
+-- en cada movimiento; solo muestra la nota si el cursor sigue exactamente
+-- donde se programó.
+local hover_timer = nil
+
+local function cancelar_hover()
+	if hover_timer then
+		hover_timer:stop()
+		hover_timer:close()
+		hover_timer = nil
+	end
+end
+
+local function programa_hover()
+	cancelar_hover()
 	if not M.options.auto_hover then
 		return
 	end
-	if preview_win then
+	if vim.fn.mode():sub(1, 1) == "i" then
+		return -- escribiendo: nada de popups
+	end
+	local bufnr = vim.api.nvim_get_current_buf()
+	if vim.bo[bufnr].buftype ~= "" or vim.b[bufnr].annotations_notes_ui then
 		return
 	end
-	if vim.bo.buftype ~= "" or vim.b.annotations_notes_ui then
-		return
-	end
-	local ann, filepath = cursor_annotation()
-	if ann and ann.note then
-		show_preview(ann.note)
-	end
+	local pos = vim.api.nvim_win_get_cursor(0)
+	hover_timer = vim.defer_fn(function()
+		hover_timer = nil
+		if vim.api.nvim_get_current_buf() ~= bufnr then
+			return
+		end
+		local ahora = vim.api.nvim_win_get_cursor(0)
+		if ahora[1] ~= pos[1] or ahora[2] ~= pos[2] then
+			return -- te moviste mientras esperábamos: cancelado
+		end
+		if vim.bo.buftype ~= "" or vim.b[bufnr].annotations_notes_ui then
+			return
+		end
+		local ann, _ = cursor_annotation()
+		if ann and ann.note then
+			show_preview(ann.note)
+		end
+	end, M.options.hover_delay_ms)
+end
+
+-- Cierra la vista previa manualmente: la leíste y estorba. No reaparece hasta
+-- que muevas el cursor de nuevo.
+function M.dismiss()
+	close_preview()
 end
 
 -- ------------------------------------------------------------
@@ -418,13 +456,17 @@ function M.setup(opts)
 
 	vim.keymap.set("n", "<leader>hn", M.edit, { desc = "Nota de la anotación (editar)" })
 	vim.keymap.set("n", "<leader>ho", M.open, { desc = "Nota de la anotación (leer completa)" })
+	vim.keymap.set("n", "<leader>hc", M.dismiss, { desc = "Cerrar la vista previa de la nota" })
 
 	local group = vim.api.nvim_create_augroup("AnnotationsNotas", { clear = true })
-	vim.api.nvim_create_autocmd("CursorHold", {
+	vim.api.nvim_create_autocmd({ "CursorMoved", "CursorMovedI", "BufEnter", "WinEnter" }, {
 		group = group,
-		pattern = "*",
-		callback = on_hover,
+		callback = function()
+			programa_hover()
+		end,
 	})
+	-- Primer buffer de la sesión
+	vim.schedule(programa_hover)
 end
 
 return M

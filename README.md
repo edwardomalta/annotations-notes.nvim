@@ -82,7 +82,8 @@ See [init.lua](lua/annotations/init.lua) for configuration options.
 |---|---|
 | `<leader>hn` | escribir/editar la nota de la anotación bajo el cursor |
 | `<leader>ho` | leer la nota completa (ventana tipo `:h`) |
-| CursorHold | vista previa flotante de la nota (si `auto_hover`) |
+| `<leader>hc` | cerrar la vista previa si ya leíste y estorba |
+| quietud (`hover_delay_ms`) | vista previa flotante de la nota (si `auto_hover`) |
 
 Estos atajos se definen en `setup()`; cada quien puede remapearlos.
 
