@@ -454,6 +454,10 @@ function M.setup(opts)
 		M.importar_legado()
 	end, { desc = "Importar notas del formato viejo (annotations-notes.json)" })
 
+	vim.api.nvim_create_user_command("AnnotationNoteDismiss", function()
+		M.dismiss()
+	end, { desc = "Cerrar la vista previa de la nota" })
+
 	vim.keymap.set("n", "<leader>hn", M.edit, { desc = "Nota de la anotación (editar)" })
 	vim.keymap.set("n", "<leader>ho", M.open, { desc = "Nota de la anotación (leer completa)" })
 	vim.keymap.set("n", "<leader>hc", M.dismiss, { desc = "Cerrar la vista previa de la nota" })
