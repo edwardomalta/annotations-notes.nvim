@@ -99,6 +99,25 @@ function M.add(hi_index)
 	end
 
 	if #overlapping > 0 then
+		-- Si la fusión consume anotaciones con nota, avisar: la anotación
+		-- fusionada no arrastra `note` (merge.union la suelta), así que las
+		-- notas de las piezas se pierden aquí.
+		local con_nota = {}
+		for _, ann in ipairs(overlapping) do
+			if ann.note and ann.note ~= "" then
+				table.insert(con_nota, ann)
+			end
+		end
+		if #con_nota > 0 then
+			vim.notify(
+				("annotations: ⚠ la fusión descartará %d nota(s): «%s…»"):format(
+					#con_nota,
+					con_nota[1].note:gsub("[%c%p%s]+", " "):sub(1, 40)
+				),
+				vim.log.levels.WARN
+			)
+		end
+
 		local merged = {
 			beg_line = beg_line,
 			beg_col = beg_col,

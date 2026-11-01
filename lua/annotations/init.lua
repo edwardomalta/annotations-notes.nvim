@@ -23,6 +23,11 @@ local DEFAULT_OPTIONS = {
 			text_object = "h",
 		},
 	},
+	-- Notas de texto sobre las anotaciones (ver lua/annotations/notas.lua)
+	notes = {
+		max_chars = 240, -- truncado de la vista previa flotante
+		auto_hover = true, -- preview automática con CursorHold
+	},
 }
 
 M.options = DEFAULT_OPTIONS
@@ -90,6 +95,9 @@ function M.setup(opts)
 
 	setup_commands()
 	require("annotations.highlight").setup_highlight_groups()
+
+	-- Capa de notas (parte de este paquete)
+	require("annotations.notas").setup(opts and opts.notes or {})
 
 	if M.options.integrations["mini.ai"].enable ~= false then
 		local ok = pcall(require, "mini.ai")
